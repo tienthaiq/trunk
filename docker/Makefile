@@ -1,4 +1,3 @@
 build:
-	echo "Build Docker image for ${APP}"
-	echo "Image tag: ${TAG}"
-	docker build -t ${TAG} .
+	echo "Build Docker image for ${APP}:${TAG}"
+	docker build -t "${APP}:${TAG}" .

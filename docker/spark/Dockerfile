@@ -77,7 +77,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     set -eux; \
     apt-get update; \
     apt-get install -y --no-install-recommends \
-        openjdk-${JAVA_VERSION}-jre-headless ca-certificates tzdata tini net-tools \
+        openjdk-${JAVA_VERSION}-jre-headless ca-certificates tzdata tini net-tools curl \
         # Hadoop native packages: https://hadoop.apache.org/docs/current/hadoop-project-dist/hadoop-common/NativeLibraries.html
         libbz2-1.0 liblz4-1 libsnappy1v5 zlib1g libzstd1 \
         libssl3 libisal2 libnss3 krb5-user procps \
