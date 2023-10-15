@@ -1,0 +1,22 @@
+version: '3.7'
+
+services:
+  postgres:
+    image: docker.io/bitnami/postgresql:16
+    container_name: trunk-postgresql
+    networks:
+      - trunk-network
+    ports:
+      - 5432:5432
+    volumes:
+      - trunk-postgresql-data:/bitnami/postgresql
+      - ./init:/docker-entrypoint-initdb.d:ro
+    environment:
+      - POSTGRESQL_PASSWORD=M!Secr3t
+
+volumes:
+  trunk-postgresql-data:
+
+networks:
+  trunk-network:
+    external: true
