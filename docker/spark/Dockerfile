@@ -45,7 +45,7 @@ FROM downloader as hadoop-downloader
 
 ARG APACHE_DIST
 ARG MAVEN_DIST
-ARG HADOOP_VERSION=3.3.6
+ARG HADOOP_VERSION=3.3.4
 
 # Hadoop
 # Hadoop tools: aws
@@ -62,19 +62,38 @@ RUN set -eux; \
 RUN tar -xvf  "hadoop-${HADOOP_VERSION}.tar.gz" --no-same-owner "hadoop-${HADOOP_VERSION}/lib/native"; \
     mv "hadoop-${HADOOP_VERSION}/lib/native" "hadoop/lib/native";
 
+# ======================
+# STAGE: DOWNLOAD TOOLS
+# ======================
+FROM downloader as tool-downloader
+
+ARG MAVEN_DIST
+ARG SPARK_MAJOR_MINOR=3.4
+ARG HUDI_VERSION=0.14.0
+
+# Tools
+RUN set -eux; \
+    # JDBC drivers
+    curl -LO "${MAVEN_DIST}/org/postgresql/postgresql/42.6.0/postgresql-42.6.0.jar"; \
+    curl -LO "${MAVEN_DIST}/com/mysql/mysql-connector-j/8.1.0/mysql-connector-j-8.1.0.jar"; \
+    # Apache Hudi
+    curl -LO "${MAVEN_DIST}/org/apache/hudi/hudi-spark${SPARK_MAJOR_MINOR}-bundle_2.12/${HUDI_VERSION}/hudi-spark${SPARK_MAJOR_MINOR}-bundle_2.12-${HUDI_VERSION}.jar";
+
 # ===========
 # STAGE: MAIN
 # ===========
 FROM ubuntu:jammy
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
+ARG MAVEN_DIST
 ARG JAVA_VERSION=17
+ARG PYTHON_VERSION=3.10
+ARG SPARK_MAJOR_MINOR=3.4
+ARG HUDI_VERSION=0.14.0
 
 # Based on Spark Kubernetes Dockerfile.
 # Link: https://github.com/apache/spark/blob/master/resource-managers/kubernetes/docker/src/main/dockerfiles/spark/Dockerfile
-RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
-    --mount=type=cache,target=/var/lib/apt,sharing=locked \
-    set -eux; \
+RUN set -eux; \
     apt-get update; \
     apt-get install -y --no-install-recommends \
         openjdk-${JAVA_VERSION}-jre-headless ca-certificates tzdata tini net-tools curl \
@@ -82,7 +101,12 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
         libbz2-1.0 liblz4-1 libsnappy1v5 zlib1g libzstd1 \
         libssl3 libisal2 libnss3 krb5-user procps \
         # Spark native packages
-        libopenblas-base libatlas3-base libarpack2;
+        libopenblas-base libatlas3-base libarpack2; \
+    # Python
+    apt install -y --no-install-recommends \
+        python${PYTHON_VERSION} python3-pip; \
+    pip3 install --upgrade pip setuptools wheel; \
+    rm -rf /root/.cache && rm -rf /var/cache/apt/* && rm -rf /var/lib/apt/lists/*;
 
 RUN echo "auth required pam_wheel.so use_uid" >> /etc/pam.d/su; \
     chgrp root /etc/passwd && chmod ug+rw /etc/passwd;
@@ -91,10 +115,13 @@ ENV JAVA_HOME="/usr/lib/jvm/java-${JAVA_VERSION}-openjdk-amd64" \
     SPARK_HOME="/opt/spark" \
     # https://spark.apache.org/docs/latest/ml-linalg-guide.html#spark-configuration
     OPENBLAS_NUM_THREADS=1 \
-    MKL_NUM_THREADS=1
+    MKL_NUM_THREADS=1 \
+    PYTHON_PATH="${SPARK_HOME}/python:${SPARK_HOME}/python/lib:${PYTHON_PATH}"
 
 COPY --link --from=spark-downloader /downloads/spark  ${SPARK_HOME}
-COPY --link --from=hadoop-downloader /downloads/hadoop ${SPARK_HOME}/hadoop
+COPY --link --from=hadoop-downloader /downloads/hadoop/lib/native ${SPARK_HOME}/hadoop/lib/native
+COPY --link --from=hadoop-downloader /downloads/hadoop/lib/tools/* ${SPARK_HOME}/jars/
+COPY --link --from=tool-downloader /downloads/*.jar ${SPARK_HOME}/jars
 
 ENV PATH="${SPARK_HOME}/bin:${PATH}" \
     LD_LIBRARY_PATH="${SPARK_HOME}/hadoop/lib/native:${LD_LIBRARY_PATH}"
