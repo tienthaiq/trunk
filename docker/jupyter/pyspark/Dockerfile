@@ -1,5 +1,3 @@
-# Copyright (c) Jupyter Development Team.
-# Distributed under the terms of the Modified BSD License.
 ARG PYTHON_VERSION=3.10
 ARG SPARK_VERSION=3.4.1
 
@@ -56,10 +54,12 @@ USER ${NB_UID}
 # 2. Find the pandas version in the file spark/dev/infra/Dockerfile.
 RUN mamba install --yes \
     'pandas<=1.5.3' \
-    'pyarrow' && \
-    mamba clean --all -f -y && \
-    fix-permissions "${CONDA_DIR}" && \
-    fix-permissions "/home/${NB_USER}"
+    pyarrow \
+    jupyter-server-proxy \
+    jupyter-lsp-python; \
+    mamba clean --all -f -y; \
+    fix-permissions "${CONDA_DIR}"; \
+    fix-permissions "/home/${NB_USER}";
 
 WORKDIR "${HOME}"
 EXPOSE 4040
