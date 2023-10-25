@@ -1,0 +1,94 @@
+version: "3.7"
+
+services:
+  kafka:
+    image: docker.io/bitnami/kafka:3.6
+    container_name: trunk-kafka
+    ports:
+      - "9092:9092"
+    networks:
+      - trunk-network
+    volumes:
+      - trunk-kafka-data:/bitnami
+    environment:
+      # KRaft settings
+      - KAFKA_CFG_NODE_ID=0
+      - KAFKA_CFG_PROCESS_ROLES=controller,broker
+      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=0@kafka:9093
+      # Listeners
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://:9092
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
+      - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=PLAINTEXT
+
+  schema-registry:
+    image: confluentinc/cp-schema-registry:7.5.1
+    container_name: trunk-schema-registry
+    hostname: schema-registry
+    environment:
+      SCHEMA_REGISTRY_HOST_NAME: schema-registry
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: kafka:9092
+      SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
+      SCHEMA_REGISTRY_SCHEMA_COMPATIBILITY_LEVEL: NONE
+    depends_on:
+      - kafka
+    networks:
+      - trunk-network
+    ports:
+      - 8081:8081
+
+  debezium:
+    image: tientq/debezium-connect
+    build:
+      context: ../docker/debezium-connect
+    container_name: trunk-debezium-connect
+    environment:
+      BOOTSTRAP_SERVERS: kafka:9092
+      GROUP_ID: 1
+      CONFIG_STORAGE_TOPIC: _debezium.configs
+      OFFSET_STORAGE_TOPIC: _debezium.offsets
+      STATUS_STORAGE_TOPIC: _debezium.statuses
+      KEY_CONVERTER: io.confluent.connect.avro.AvroConverter
+      VALUE_CONVERTER: io.confluent.connect.avro.AvroConverter
+      CONNECT_KEY_CONVERTER_SCHEMA_REGISTRY_URL: http://schema-registry:8081
+      CONNECT_VALUE_CONVERTER_SCHEMA_REGISTRY_URL: http://schema-registry:8081
+    depends_on:
+      - kafka
+    networks:
+      - trunk-network
+    ports:
+      - 8083:8083
+
+  console:
+    image: redpandadata/console:v2.3.5
+    container_name: trunk-kafka-console
+    networks:
+      - trunk-network
+    entrypoint: /bin/sh
+    depends_on:
+      - kafka
+    command: -c 'echo "$$CONSOLE_CONFIG_FILE" > /tmp/config.yml; /app/console'
+    environment:
+      CONFIG_FILEPATH: /tmp/config.yml
+      CONSOLE_CONFIG_FILE: |
+        kafka:
+          brokers: ["kafka:9092"]
+          schemaRegistry:
+            enabled: true
+            urls: ["http://schema-registry:8081"]
+        connect:
+          enabled: true
+          clusters:
+            - name: debezium
+              url: http://debezium:8083
+    ports:
+      - 8082:8080
+
+volumes:
+  trunk-kafka-data:
+    driver: local
+
+networks:
+  trunk-network:
+    external: true
