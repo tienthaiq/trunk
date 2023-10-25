@@ -11,6 +11,7 @@ services:
     volumes:
       - trunk-postgresql-data:/bitnami/postgresql
       - ./init:/docker-entrypoint-initdb.d:ro
+      - ./conf:/bitnami/postgresql/conf:ro
     environment:
       - POSTGRESQL_PASSWORD=M!Secr3t
 

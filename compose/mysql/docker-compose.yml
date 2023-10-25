@@ -2,8 +2,12 @@ version: '3.7'
 
 services:
   mysql:
-    image: docker.io/bitnami/mysql:8.0
+    image: mysql:8.0
     container_name: trunk-mysql
+    command:
+      - --gtid-mode=ON
+      - --enforce_gtid_consistency=ON
+      - --default-authentication-plugin=mysql_native_password
     networks:
       - trunk-network
     ports:
