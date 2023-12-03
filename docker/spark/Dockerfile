@@ -2,6 +2,9 @@
 ARG APACHE_DIST=https://dlcdn.apache.org
 ARG MAVEN_DIST=https://repo1.maven.org/maven2
 
+ARG SPARK_VERSION=3.5.0
+ARG SPARK_MAJOR_MINOR=3.5
+
 # ======================
 # STAGE: DOWNLOADER
 # ======================
@@ -17,7 +20,7 @@ FROM downloader as spark-downloader
 
 ARG APACHE_DIST
 ARG MAVEN_DIST
-ARG SPARK_VERSION=3.4.1
+ARG SPARK_VERSION
 ARG SCALA_VERSION=2.13
 ARG HADOOP_MAJOR=3
 
@@ -68,7 +71,7 @@ RUN tar -xvf  "hadoop-${HADOOP_VERSION}.tar.gz" --no-same-owner "hadoop-${HADOOP
 FROM downloader as tool-downloader
 
 ARG MAVEN_DIST
-ARG SPARK_MAJOR_MINOR=3.4
+ARG SPARK_MAJOR_MINOR
 ARG HUDI_VERSION=0.14.0
 
 # Tools
@@ -89,7 +92,7 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 ARG MAVEN_DIST
 ARG JAVA_VERSION=17
 ARG PYTHON_VERSION=3.10
-ARG SPARK_MAJOR_MINOR=3.4
+ARG SPARK_MAJOR_MINOR
 ARG HUDI_VERSION=0.14.0
 
 # Based on Spark Kubernetes Dockerfile.

@@ -1,4 +1,4 @@
 APP=spark
-TAG=3.4.1
+TAG=3.5.0
 
 include ../Makefile
