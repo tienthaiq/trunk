@@ -76,8 +76,9 @@ RUN set -eux; \
     # JDBC drivers
     curl -LO "${MAVEN_DIST}/org/postgresql/postgresql/42.6.0/postgresql-42.6.0.jar"; \
     curl -LO "${MAVEN_DIST}/com/mysql/mysql-connector-j/8.1.0/mysql-connector-j-8.1.0.jar"; \
-    # Apache Hudi
-    curl -LO "${MAVEN_DIST}/org/apache/hudi/hudi-spark${SPARK_MAJOR_MINOR}-bundle_2.12/${HUDI_VERSION}/hudi-spark${SPARK_MAJOR_MINOR}-bundle_2.12-${HUDI_VERSION}.jar";
+    # Apache Hudi & tools
+    curl -LO "${MAVEN_DIST}/org/apache/hudi/hudi-spark${SPARK_MAJOR_MINOR}-bundle_2.12/${HUDI_VERSION}/hudi-spark${SPARK_MAJOR_MINOR}-bundle_2.12-${HUDI_VERSION}.jar"; \
+    curl -LO "${MAVEN_DIST}/org/apache/hudi/hudi-utilities-bundle_2.12/0.14.0/hudi-utilities-bundle_2.12-0.14.0.jar";
 
 # ===========
 # STAGE: MAIN
@@ -119,6 +120,7 @@ ENV JAVA_HOME="/usr/lib/jvm/java-${JAVA_VERSION}-openjdk-amd64" \
     PYTHON_PATH="${SPARK_HOME}/python:${SPARK_HOME}/python/lib:${PYTHON_PATH}"
 
 COPY --link --from=spark-downloader /downloads/spark  ${SPARK_HOME}
+# TODO: put tools in separate folders
 COPY --link --from=hadoop-downloader /downloads/hadoop/lib/native ${SPARK_HOME}/hadoop/lib/native
 COPY --link --from=hadoop-downloader /downloads/hadoop/lib/tools/* ${SPARK_HOME}/jars/
 COPY --link --from=tool-downloader /downloads/*.jar ${SPARK_HOME}/jars
