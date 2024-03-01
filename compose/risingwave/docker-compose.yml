@@ -1,0 +1,203 @@
+version: "3.7"
+x-image: &image
+  image: ${RW_IMAGE:-risingwavelabs/risingwave:v1.4.0}
+services:
+  compactor:
+    <<: *image
+    command:
+      - compactor-node
+      - "--listen-addr"
+      - "0.0.0.0:6660"
+      - "--advertise-addr"
+      - "compactor:6660"
+      - "--meta-address"
+      - "http://meta:5690"
+      - "--config-path"
+      - /risingwave.toml
+    expose:
+      - "6660"
+      - "1260"
+    depends_on:
+      - meta
+    volumes:
+      - "./risingwave.toml:/risingwave.toml"
+    environment:
+      RUST_BACKTRACE: "1"
+      ENABLE_TELEMETRY: false
+    container_name: trunk-rs-compactor
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - bash -c 'printf \"GET / HTTP/1.1\n\n\" > /dev/tcp/127.0.0.1/6660; exit $$?;'
+      interval: 1s
+      timeout: 5s
+      retries: 5
+    networks:
+      - trunk-network
+
+  compute:
+    <<: *image
+    command:
+      - compute
+      - "--listen-addr"
+      - "0.0.0.0:5688"
+      - "--advertise-addr"
+      - "compute:5688"
+      - "--meta-address"
+      - "http://meta:5690"
+      - "--config-path"
+      - /risingwave.toml
+    expose:
+      - "5688"
+      - "1222"
+    ports: []
+    depends_on:
+      - meta
+    volumes:
+      - "./risingwave.toml:/risingwave.toml"
+    environment:
+      RUST_BACKTRACE: "1"
+      ENABLE_TELEMETRY: false
+    container_name: trunk-rs-compute
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - bash -c 'printf \"GET / HTTP/1.1\n\n\" > /dev/tcp/127.0.0.1/5688; exit $$?;'
+      interval: 1s
+      timeout: 5s
+      retries: 5
+    networks:
+      - trunk-network
+
+  etcd:
+    image: "quay.io/coreos/etcd:v3.5.10"
+    command:
+      - /usr/local/bin/etcd
+      - "--listen-client-urls"
+      - "http://0.0.0.0:2388"
+      - "--advertise-client-urls"
+      - "http://etcd:2388"
+      - "--listen-peer-urls"
+      - "http://0.0.0.0:2389"
+      - "--initial-advertise-peer-urls"
+      - "http://etcd:2389"
+      - "--listen-metrics-urls"
+      - "http://0.0.0.0:2379"
+      - "--name"
+      - risedev-meta
+      - "--max-txn-ops"
+      - "999999"
+      - "--max-request-bytes"
+      - "10485760"
+      - "--auto-compaction-mode"
+      - periodic
+      - "--auto-compaction-retention"
+      - 1m
+      - "--snapshot-count"
+      - "10000"
+      - "--data-dir"
+      - /etcd-data
+    expose:
+      - "2388"
+    volumes:
+      - "trunk-rs-etcd-data:/etcd-data"
+    container_name: trunk-rs-etcd
+    healthcheck:
+      test:
+        - CMD
+        - etcdctl
+        - --endpoints=http://localhost:2388
+        - endpoint
+        - health
+      interval: 1s
+      timeout: 5s
+      retries: 5
+    networks:
+      - trunk-network
+
+  frontend:
+    <<: *image
+    command:
+      - frontend
+      - "--listen-addr"
+      - "0.0.0.0:4566"
+      - "--meta-addr"
+      - "http://meta:5690"
+      - "--advertise-addr"
+      - "frontend:4566"
+      - "--config-path"
+      - /risingwave.toml
+    expose:
+      - "4566"
+    ports:
+      - "4566:4566"
+    depends_on:
+      - meta
+    volumes:
+      - "./risingwave.toml:/risingwave.toml"
+    environment:
+      RUST_BACKTRACE: "1"
+      ENABLE_TELEMETRY: false
+    container_name: trunk-rs-frontend
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - bash -c 'printf \"GET / HTTP/1.1\n\n\" > /dev/tcp/127.0.0.1/4566; exit $$?;'
+      interval: 1s
+      timeout: 5s
+      retries: 5
+    networks:
+      - trunk-network
+
+  meta:
+    <<: *image
+    command:
+      - meta
+      - "--listen-addr"
+      - "0.0.0.0:5690"
+      - "--advertise-addr"
+      - "meta:5690"
+      - "--dashboard-host"
+      - "0.0.0.0:5691"
+      - "--backend"
+      - etcd
+      - "--etcd-endpoints"
+      - "etcd:2388"
+      - "--state-store"
+      - "hummock+minio://admin:M!Secr3t@minio:9000/risingwave"
+      - "--data-directory"
+      - "risingwave"
+      - "--config-path"
+      - /risingwave.toml
+    expose:
+      - "5690"
+      - "1250"
+      - "5691"
+    ports:
+      - "5690:5690"
+      - "5691:5691"
+    depends_on:
+      - "etcd"
+    volumes:
+      - "./risingwave.toml:/risingwave.toml"
+    environment:
+      RUST_BACKTRACE: "1"
+      ENABLE_TELEMETRY: false
+    container_name: trunk-rs-meta
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - bash -c 'printf \"GET / HTTP/1.1\n\n\" > /dev/tcp/127.0.0.1/5690; exit $$?;'
+      interval: 1s
+      timeout: 5s
+      retries: 5
+    networks:
+      - trunk-network
+
+volumes:
+  trunk-rs-etcd-data:
+    external: false
+
+networks:
+  trunk-network:
+    external: true
