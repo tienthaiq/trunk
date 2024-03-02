@@ -1,0 +1,77 @@
+version: "3"
+services:
+  starrocks-fe:
+    image: starrocks/fe-ubuntu:3.2.3
+    hostname: starrocks-fe
+    container_name: trunk-starrocks-fe
+    ports:
+      - 8030:8030
+      - 9020:9020
+      - 9030:9030
+    command:
+      - /opt/starrocks/fe/bin/start_fe.sh
+    volumes:
+      - ./conf/fe.conf:/opt/starrocks/fe/conf/fe.conf
+    networks:
+      - trunk-network
+    healthcheck:
+      test: 'mysql -uroot -h starrocks-fe -P 9030 -e "show frontends\G" | grep "Alive: true"'
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  starrocks-cn-0:
+    image: starrocks/cn-ubuntu:3.2.3
+    hostname: starrocks-cn-0
+    container_name: trunk-starrocks-cn-0
+    command:
+      - /bin/bash
+      - -c
+      - |
+        sleep 15s;
+        mysql --connect-timeout 2 -h starrocks-fe -P 9030 -uroot -e "ALTER SYSTEM ADD COMPUTE NODE \"starrocks-cn-0:9050\";"
+        /opt/starrocks/cn/bin/start_cn.sh
+    volumes:
+      - ./conf/cn.conf:/opt/starrocks/cn/conf/cn.conf
+      - trunk-starrocks-cn-0:/opt/starrocks/cn/storage
+    depends_on:
+      - starrocks-fe
+    networks:
+      - trunk-network
+    healthcheck:
+      test: 'mysql -uroot -h starrocks-fe -P 9030 -e "SHOW COMPUTE NODES" | grep "starrocks-cn-0" | grep "Alive: true"'
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  starrocks-cn-1:
+    image: starrocks/cn-ubuntu:3.2.3
+    hostname: starrocks-cn-1
+    container_name: trunk-starrocks-cn-1
+    command:
+      - /bin/bash
+      - -c
+      - |
+        sleep 15s;
+        mysql --connect-timeout 2 -h starrocks-fe -P 9030 -uroot -e "ALTER SYSTEM ADD COMPUTE NODE \"starrocks-cn-1:9050\";"
+        /opt/starrocks/cn/bin/start_cn.sh
+    volumes:
+      - ./conf/cn.conf:/opt/starrocks/cn/conf/cn.conf
+      - trunk-starrocks-cn-1:/opt/starrocks/cn/storage
+    networks:
+      - trunk-network
+    depends_on:
+      - starrocks-fe
+    healthcheck:
+      test: 'mysql -uroot -h starrocks-fe -P 9030 -e "SHOW COMPUTE NODES" | grep "starrocks-cn-1" | grep "Alive: true"'
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  trunk-starrocks-cn-0:
+  trunk-starrocks-cn-1:
+
+networks:
+  trunk-network:
+    external: true
