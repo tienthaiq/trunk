@@ -1,8 +1,6 @@
-version: "3.7"
-
 services:
   kafka:
-    image: docker.io/bitnami/kafka:3.6
+    image: docker.io/bitnami/kafka:3.9
     container_name: trunk-kafka
     ports:
       - "9092:9092"
@@ -23,7 +21,7 @@ services:
       - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=PLAINTEXT
 
   schema-registry:
-    image: confluentinc/cp-schema-registry:7.5.1
+    image: confluentinc/cp-schema-registry:7.8.0
     container_name: trunk-schema-registry
     hostname: schema-registry
     environment:
@@ -39,7 +37,7 @@ services:
       - 8081:8081
 
   debezium:
-    image: tientq/debezium-connect
+    image: tientq/debezium-connect:3.0.4
     build:
       context: ../docker/debezium-connect
     container_name: trunk-debezium-connect
@@ -60,34 +58,44 @@ services:
     ports:
       - 8083:8083
 
-  console:
-    image: redpandadata/console:v2.3.5
-    container_name: trunk-kafka-console
+  conduktor-db:
+    image: postgres:14
+    container_name: trunk-kafka-conduktor-db
     networks:
       - trunk-network
-    entrypoint: /bin/sh
-    depends_on:
-      - kafka
-    command: -c 'echo "$$CONSOLE_CONFIG_FILE" > /tmp/config.yml; /app/console'
+    volumes:
+      - trunk-conduktor-db-data:/var/lib/postgresql/data
     environment:
-      CONFIG_FILEPATH: /tmp/config.yml
-      CONSOLE_CONFIG_FILE: |
-        kafka:
-          brokers: ["kafka:9092"]
-          schemaRegistry:
-            enabled: true
-            urls: ["http://schema-registry:8081"]
-        connect:
-          enabled: true
-          clusters:
-            - name: debezium
-              url: http://debezium:8083
+      POSTGRES_DB: "conduktor-console"
+      POSTGRES_USER: "conduktor"
+      POSTGRES_PASSWORD: "M!Secr3t"
+      POSTGRES_HOST_AUTH_METHOD: "scram-sha-256"
+
+  conduktor:
+    image: conduktor/conduktor-console:1.26.0
+    container_name: trunk-kafka-conduktor-console
+    depends_on:
+      - conduktor-db
+    networks:
+      - trunk-network
     ports:
-      - 8082:8080
+      - "8080:8080"
+    volumes:
+      - trunk-conduktor-console-data:/var/conduktor
+    environment:
+      CDK_DATABASE_URL: "postgresql://conduktor:M!Secr3t@conduktor-db:5432/conduktor-console"
+      CDK_CLUSTERS_0_ID: "default"
+      CDK_CLUSTERS_0_NAME: "My Local Kafka Cluster"
+      CDK_CLUSTERS_0_COLOR: "#0013E7"
+      CDK_CLUSTERS_0_BOOTSTRAPSERVERS: "PLAINTEXT://kafka:9092"
+      CDK_CLUSTERS_0_SCHEMAREGISTRY_URL: "http://schema-registry:8081"
+      CDK_CLUSTERS_0_KAFKACONNECTS_0_URL: "http://debezium:8083"
+      CDK_CLUSTERS_0_KAFKACONNECTS_0_NAME: "debezium-connect"
 
 volumes:
   trunk-kafka-data:
-    driver: local
+  trunk-conduktor-console-data:
+  trunk-conduktor-db-data:
 
 networks:
   trunk-network:
