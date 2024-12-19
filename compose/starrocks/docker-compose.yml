@@ -1,7 +1,7 @@
-version: "3"
+# Based on Starrocks demo docker-compose at: https://github.com/StarRocks/demo/blob/master/deploy/docker-compose/docker-compose-shared-data.yml
 services:
   starrocks-fe:
-    image: starrocks/fe-ubuntu:3.2.3
+    image: starrocks/fe-ubuntu:3.3.7
     hostname: starrocks-fe
     container_name: trunk-starrocks-fe
     ports:
@@ -21,7 +21,7 @@ services:
       retries: 3
 
   starrocks-cn-0:
-    image: starrocks/cn-ubuntu:3.2.3
+    image: starrocks/cn-ubuntu:3.3.7
     hostname: starrocks-cn-0
     container_name: trunk-starrocks-cn-0
     command:
@@ -45,7 +45,7 @@ services:
       retries: 3
 
   starrocks-cn-1:
-    image: starrocks/cn-ubuntu:3.2.3
+    image: starrocks/cn-ubuntu:3.3.7
     hostname: starrocks-cn-1
     container_name: trunk-starrocks-cn-1
     command:
