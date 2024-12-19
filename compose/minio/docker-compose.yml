@@ -1,8 +1,6 @@
-version: '3.7'
-
 services:
   minio:
-    image: quay.io/minio/minio:RELEASE.2023-10-07T15-07-38Z
+    image: quay.io/minio/minio:RELEASE.2024-12-18T13-15-44Z
     container_name: trunk-minio
     networks:
       - trunk-network
@@ -16,10 +14,39 @@ services:
     - MINIO_ROOT_PASSWORD=M!Secr3t
     command: server /data --console-address :9001
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      test: ["CMD", "mc", "ready", "local"]
       interval: 30s
       timeout: 20s
       retries: 3
+
+  minio-setup:
+    image: minio/mc
+    container_name: trunk-minio-client
+    networks:
+    - trunk-network
+    depends_on:
+    - minio
+    environment:
+    - AWS_ACCESS_KEY_ID=admin
+    - AWS_SECRET_ACCESS_KEY=M!Secr3t
+    command:
+    - /bin/bash
+    - -c
+    - |
+      mc alias set minio http://minio:9000 $AWS_ACCESS_KEY_ID $AWS_SECRET_ACCESS_KEY --api S3v4;
+      mc mb minio/starrocks
+
+  minio-client:
+    image: minio/mc
+    container_name: trunk-minio-client
+    networks:
+    - trunk-network
+    depends_on:
+    - minio
+    environment:
+    - AWS_ACCESS_KEY_ID=admin
+    - AWS_SECRET_ACCESS_KEY=M!Secr3t
+    tty: true
 
 volumes:
   trunk-minio-data:
