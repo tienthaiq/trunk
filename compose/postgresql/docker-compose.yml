@@ -1,22 +1,49 @@
-version: '3.7'
-
 services:
-  postgres:
-    image: docker.io/bitnami/postgresql:16
-    container_name: trunk-postgresql
+  postgresql-master:
+    image: docker.io/bitnami/postgresql:17
+    container_name: trunk-postgresql-master
     networks:
       - trunk-network
     ports:
       - 5432:5432
     volumes:
-      - trunk-postgresql-data:/bitnami/postgresql
+      - trunk-postgresql-master-data:/bitnami/postgresql
       - ./init:/docker-entrypoint-initdb.d:ro
-      - ./conf:/bitnami/postgresql/conf:ro
+      - ./conf/master-postgresql.conf:/bitnami/postgresql/conf/postgresql.conf:ro
     environment:
+      - POSTGRESQL_POSTGRES_PASSWORD=M!SuperSecr3t
+      - POSTGRESQL_USERNAME=dvdrental_user
       - POSTGRESQL_PASSWORD=M!Secr3t
+      - POSTGRESQL_REPLICATION_MODE=master
+      - POSTGRESQL_REPLICATION_USER=repl_user
+      - POSTGRESQL_REPLICATION_PASSWORD=repl_password
+      - POSTGRESQL_WAL_LEVEL=logical
+
+  postgresql-replica:
+    image: docker.io/bitnami/postgresql:17
+    container_name: trunk-postgresql-replica
+    networks:
+      - trunk-network
+    ports:
+      - 5433:5432
+    depends_on:
+      - postgresql-master
+    volumes:
+      - trunk-postgresql-replica-data:/bitnami/postgresql
+      - ./conf/master-postgresql.conf:/bitnami/postgresql/conf/postgresql.conf:ro
+    environment:
+      - POSTGRESQL_REPLICATION_MODE=slave
+      - POSTGRESQL_REPLICATION_USER=repl_user
+      - POSTGRESQL_REPLICATION_PASSWORD=repl_password
+      - POSTGRESQL_MASTER_HOST=postgresql-master
+      - POSTGRESQL_MASTER_PORT_NUMBER=5432
+      - POSTGRESQL_USERNAME=dvdrental_user
+      - POSTGRESQL_PASSWORD=M!Secr3t
+      - POSTGRESQL_WAL_LEVEL=logical
 
 volumes:
-  trunk-postgresql-data:
+  trunk-postgresql-master-data:
+  trunk-postgresql-replica-data:
 
 networks:
   trunk-network:

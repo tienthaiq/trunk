@@ -1,4 +1,4 @@
 APP=debezium-connect
-TAG=2.4.1
+TAG=3.0.4
 
 include ../Makefile
