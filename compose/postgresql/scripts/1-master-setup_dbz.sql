@@ -1,9 +1,10 @@
--- Create debezium user & grant replication & select permissions
-create user debezium with password 'dbz_secret' replication login;
+-- Create replication user for debezium
+create user debezium with encrypted password 'dbz_secret' replication login;
+-- Grant SELECT
+\connect dvdrental;
 grant usage on schema public to debezium;
 grant select on all tables in schema public to debezium;
 alter default privileges in schema public grant select on tables to debezium;
-
 -- Create publication slot
 create publication pub__trunk_kafka_dbz for all tables;
 
