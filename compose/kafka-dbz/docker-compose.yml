@@ -91,6 +91,8 @@ services:
       CDK_CLUSTERS_0_SCHEMAREGISTRY_URL: "http://schema-registry:8081"
       CDK_CLUSTERS_0_KAFKACONNECTS_0_URL: "http://debezium:8083"
       CDK_CLUSTERS_0_KAFKACONNECTS_0_NAME: "debezium-connect"
+      CDK_ADMIN_EMAIL: "admin@abc.com"
+      CDK_ADMIN_PASSWORD: "M!Secr3t"
 
 volumes:
   trunk-kafka-data:

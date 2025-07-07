@@ -17,11 +17,10 @@ services:
       - POSTGRESQL_REPLICATION_MODE=master
       - POSTGRESQL_REPLICATION_USER=repl_user
       - POSTGRESQL_REPLICATION_PASSWORD=repl_password
-      - POSTGRESQL_WAL_LEVEL=logical
 
-  postgresql-replica:
+  postgresql-standby:
     image: docker.io/bitnami/postgresql:17
-    container_name: trunk-postgresql-replica
+    container_name: trunk-postgresql-standby
     networks:
       - trunk-network
     ports:
@@ -29,8 +28,8 @@ services:
     depends_on:
       - postgresql-master
     volumes:
-      - trunk-postgresql-replica-data:/bitnami/postgresql
-      - ./conf/master-postgresql.conf:/bitnami/postgresql/conf/postgresql.conf:ro
+      - trunk-postgresql-standby-data:/bitnami/postgresql
+      - ./conf/standby-postgresql.conf:/bitnami/postgresql/conf/postgresql.conf:ro
     environment:
       - POSTGRESQL_REPLICATION_MODE=slave
       - POSTGRESQL_REPLICATION_USER=repl_user
@@ -43,7 +42,7 @@ services:
 
 volumes:
   trunk-postgresql-master-data:
-  trunk-postgresql-replica-data:
+  trunk-postgresql-standby-data:
 
 networks:
   trunk-network:
